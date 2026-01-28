@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { RESERVOIRS, getHistoricalData } from './services/mockData';
-import { SimulationState, AIAnalysisResult } from './types';
+import { SimulationState, AIAnalysisResult, SeasonalData } from './types';
 import { generateHydrologicalReport } from './services/geminiService';
+import { fetchSatelliteAnalysis, fetchMLForecast, checkMLAnomaly } from './services/api';
+
 import MapVisualizer from './components/MapVisualizer';
 import VolumeChart from './components/VolumeChart';
 import AIInsights from './components/AIInsights';
@@ -9,7 +11,7 @@ import DashboardControls from './components/DashboardControls';
 import ModelFeedback from './components/ModelFeedback';
 import MLControlPanel from './components/MLControlPanel';
 import Logo from './components/Logo';
-import { Waves, BarChart3, Info, Download, Mountain, Timer, Loader2, Server } from 'lucide-react';
+import { Waves, BarChart3, Info, Download, Mountain, Timer, Loader2, Server, Satellite } from 'lucide-react';
 
 const App: React.FC = () => {
   const [state, setState] = useState<SimulationState>({
@@ -24,6 +26,12 @@ const App: React.FC = () => {
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+
+  // Backend Data State
+  const [satelliteData, setSatelliteData] = useState<any>(null);
+  const [mlForecast, setMlForecast] = useState<number | null>(null);
+  const [mlAnomaly, setMlAnomaly] = useState<boolean>(false);
+  const [isLoadingBackend, setIsLoadingBackend] = useState(false);
 
   // Check Backend Status on Mount
   useEffect(() => {
@@ -48,6 +56,54 @@ const App: React.FC = () => {
     historicalData.find(d => d.year === state.compareYear && d.season === state.compareSeason) || historicalData[0],
   [historicalData, state.compareYear, state.compareSeason]);
 
+  // Fetch Live Data from Backend when params change
+  useEffect(() => {
+    const fetchLive = async () => {
+        if (backendStatus !== 'online') {
+            setSatelliteData(null);
+            setMlForecast(null);
+            return;
+        }
+
+        setIsLoadingBackend(true);
+        try {
+            // Convert Season to approx month for API
+            let month = '01';
+            if (state.season === 'Summer') month = '05';
+            if (state.season === 'Monsoon') month = '08';
+            if (state.season === 'Post-Monsoon') month = '11';
+            const dateStr = `${state.year}-${month}-15`;
+
+            // Parallel calls
+            const [satResult, anomalyResult, forecastResult] = await Promise.all([
+                fetchSatelliteAnalysis(selectedReservoir.name, selectedReservoir.location[0], selectedReservoir.location[1], dateStr),
+                checkMLAnomaly(currentData.volume),
+                fetchMLForecast(historicalData.map(d => d.volume))
+            ]);
+
+            setSatelliteData(satResult);
+            setMlAnomaly(anomalyResult?.is_anomaly || false);
+            setMlForecast(forecastResult?.predicted_volume || null);
+        } catch (e) {
+            console.error("Failed to fetch backend data", e);
+        } finally {
+            setIsLoadingBackend(false);
+        }
+    };
+    
+    fetchLive();
+  }, [state.year, state.season, selectedReservoir.id, backendStatus, currentData.volume, historicalData]);
+
+  // Merge Mock Data with Backend Data for Display
+  const displayData = useMemo((): SeasonalData => {
+      if (!satelliteData) return currentData;
+      return {
+          ...currentData,
+          surfaceArea: satelliteData.surface_area_km2 || currentData.surfaceArea,
+          // We could update volume here if we had bathymetry logic, keeping mock volume for consistency unless anomaly
+      };
+  }, [currentData, satelliteData]);
+
   const availableYears = Array.from(new Set(historicalData.map(d => d.year))).sort();
   const availableSeasons = ['Winter', 'Summer', 'Monsoon', 'Post-Monsoon'] as const;
 
@@ -59,7 +115,13 @@ const App: React.FC = () => {
   const handleGenerateAI = async () => {
     setIsGeneratingReport(true);
     try {
-      const result = await generateHydrologicalReport(selectedReservoir, currentData, historicalData);
+      // Pass the anomaly flag to the report generator logic
+      const result = await generateHydrologicalReport(selectedReservoir, displayData, historicalData);
+      
+      // Inject ML Anomaly result if available
+      if (result) {
+          result.isAnomaly = mlAnomaly; // Ensure backend ML result is preferred
+      }
       setAiAnalysis(result);
       return result;
     } catch (e) {
@@ -106,6 +168,7 @@ const App: React.FC = () => {
                 <span className={`flex items-center gap-1 transition-colors ${backendStatus === 'online' ? 'text-green-400' : 'text-orange-400'}`}>
                     <Server size={10} /> {backendStatus === 'online' ? 'Backend Connected' : 'Simulation Mode'}
                 </span>
+                {isLoadingBackend && <Loader2 size={10} className="animate-spin text-sky-400"/>}
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Live Feed</span>
              </div>
              <button 
@@ -158,8 +221,9 @@ const App: React.FC = () => {
                 <div className="relative h-full w-full">
                    <MapVisualizer 
                       reservoir={selectedReservoir} 
-                      data={currentData} 
+                      data={displayData} 
                       label={state.isComparisonMode ? `${state.season} ${state.year} (Primary)` : undefined}
+                      isSimulation={satelliteData ? satelliteData.is_simulation : true}
                    />
                 </div>
 
@@ -169,6 +233,7 @@ const App: React.FC = () => {
                       reservoir={selectedReservoir} 
                       data={comparisonData} 
                       label={`${state.compareSeason} ${state.compareYear} (Comparison)`}
+                      isSimulation={true} // Historical comparison usually implies simulation/archived data
                     />
                     <button 
                        onClick={() => handleStateChange({ isComparisonMode: false })}
@@ -181,10 +246,21 @@ const App: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print:grid-cols-2">
-               <StatCard label="Water Level" value={`${currentData.waterLevel} m`} sub={`FRL: ${selectedReservoir.fullLevel} m`} trend={currentData.waterLevel > (selectedReservoir.fullLevel * 0.8) ? 'up' : 'down'}/>
-               <StatCard label="Surface Area" value={`${currentData.surfaceArea} km²`} sub="Extracted via NDWI" icon={<Waves size={14} className="text-blue-400"/>}/>
-               <StatCard label="Storage Vol" value={`${currentData.volume} MCM`} sub={`${Math.round((currentData.volume/selectedReservoir.maxCapacity)*100)}% Capacity`} trend="neutral"/>
-               <StatCard label="Rainfall" value={`${currentData.rainfall} mm`} sub={`${state.season} avg`} icon={<BarChart3 size={14} className="text-blue-400"/>}/>
+               <StatCard label="Water Level" value={`${displayData.waterLevel} m`} sub={`FRL: ${selectedReservoir.fullLevel} m`} trend={displayData.waterLevel > (selectedReservoir.fullLevel * 0.8) ? 'up' : 'down'}/>
+               <StatCard 
+                  label="Surface Area" 
+                  value={`${displayData.surfaceArea} km²`} 
+                  sub={satelliteData?.is_simulation === false ? "Sentinel-2 Real-Time" : "Simulated / Mock"} 
+                  icon={<Satellite size={14} className={satelliteData?.is_simulation === false ? "text-emerald-400" : "text-orange-400"}/>}
+               />
+               <StatCard 
+                  label="Storage Vol" 
+                  value={`${displayData.volume} MCM`} 
+                  sub={`${Math.round((displayData.volume/selectedReservoir.maxCapacity)*100)}% Capacity`} 
+                  trend="neutral"
+                  alert={mlAnomaly} // Pass alert state
+               />
+               <StatCard label="Rainfall" value={`${displayData.rainfall} mm`} sub={`${state.season} avg`} icon={<BarChart3 size={14} className="text-blue-400"/>}/>
             </div>
 
             <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl stat-card">
@@ -212,19 +288,29 @@ const App: React.FC = () => {
 
           <div className="lg:col-span-4 flex flex-col gap-6 lg:h-full lg:overflow-y-auto pr-1">
             <MLControlPanel />
-            <AIInsights analysis={aiAnalysis} isLoading={isGeneratingReport} onGenerate={handleGenerateAI}/>
-            {aiAnalysis && (<ModelFeedback analysis={aiAnalysis} data={currentData} onFeedbackSubmit={(f) => console.log(f)}/>)}
-            <VolumeChart data={historicalData} />
+            <AIInsights 
+                analysis={aiAnalysis ? {...aiAnalysis, isAnomaly: mlAnomaly} : null} // Force inject anomaly state 
+                isLoading={isGeneratingReport} 
+                onGenerate={handleGenerateAI}
+            />
+            {aiAnalysis && (<ModelFeedback analysis={aiAnalysis} data={displayData} onFeedbackSubmit={(f) => console.log(f)}/>)}
+            <VolumeChart data={historicalData} forecast={mlForecast} />
+            
             <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl print-hidden">
                <div className="flex items-center gap-2 mb-2 text-slate-100 font-medium">
                   <Info size={16} />
-                  <span className="text-sm">Backend Architecture</span>
+                  <span className="text-sm">System Status</span>
                </div>
-               <p className="text-xs text-slate-400 leading-relaxed">
+               <p className="text-xs text-slate-400 leading-relaxed mb-2">
                  {backendStatus === 'online' 
-                    ? "Connected to Python/FastAPI Backend. Processing real satellite imagery via Google Earth Engine and securing Gemini keys server-side." 
-                    : "Running in Browser Simulation Mode. Start the Python backend for real-time satellite data processing."}
+                    ? "✅ Connected to Python/FastAPI Backend." 
+                    : "⚠️ Running in Browser Mode (Simulation)."}
                </p>
+               <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-500">
+                   <div>Satellite: {satelliteData ? 'Sentinel-2 L2A' : 'Simulated'}</div>
+                   <div>Forecast: {mlForecast ? 'LSTM (PyTorch)' : 'Statistical'}</div>
+                   <div>Anomaly: {mlAnomaly ? 'Isolation Forest' : 'Statistical'}</div>
+               </div>
             </div>
           </div>
         </div>
@@ -233,13 +319,14 @@ const App: React.FC = () => {
   );
 };
 
-const StatCard: React.FC<{label: string, value: string, sub: string, trend?: 'up'|'down'|'neutral', icon?: React.ReactNode}> = ({label, value, sub, trend, icon}) => (
-  <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl hover:border-slate-700 transition-colors stat-card">
+const StatCard: React.FC<{label: string, value: string, sub: string, trend?: 'up'|'down'|'neutral', icon?: React.ReactNode, alert?: boolean}> = ({label, value, sub, trend, icon, alert}) => (
+  <div className={`bg-slate-900/80 border p-4 rounded-xl hover:border-slate-700 transition-colors stat-card relative overflow-hidden ${alert ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'border-slate-800'}`}>
+    {alert && <div className="absolute top-0 right-0 p-1 bg-red-500 text-white text-[9px] font-bold rounded-bl">ANOMALY</div>}
     <div className="flex justify-between items-start mb-2">
       <span className="text-slate-500 text-xs font-semibold uppercase tracking-wider">{label}</span>
       {icon}
     </div>
-    <div className="text-2xl font-bold text-slate-100 mb-1">{value}</div>
+    <div className={`text-2xl font-bold mb-1 ${alert ? 'text-red-400' : 'text-slate-100'}`}>{value}</div>
     <div className="flex items-center gap-2">
        {trend && (<span className={`text-xs px-1.5 py-0.5 rounded ${trend === 'up' ? 'bg-green-500/20 text-green-400' : trend === 'down' ? 'bg-red-500/20 text-red-400' : 'bg-slate-700 text-slate-400'}`}>{trend === 'up' ? '↑' : trend === 'down' ? '↓' : '-'}</span>)}
        <span className="text-xs text-slate-400 truncate">{sub}</span>

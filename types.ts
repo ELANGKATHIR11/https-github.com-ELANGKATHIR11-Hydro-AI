@@ -37,4 +37,5 @@ export interface AIAnalysisResult {
   floodProbability: number; // 0-100%
   droughtSeverity: 'Normal' | 'Moderate' | 'Severe' | 'Extreme';
   forecast: string;
+  isAnomaly?: boolean;
 }

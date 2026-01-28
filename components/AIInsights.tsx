@@ -3,7 +3,7 @@ import { AIAnalysisResult } from '../types';
 import { Bot, Loader2, AlertTriangle, CheckCircle, AlertOctagon, TrendingUp, Droplets, Sun, Activity, Zap } from 'lucide-react';
 
 interface AIInsightsProps {
-  analysis: AIAnalysisResult & { isAnomaly?: boolean } | null;
+  analysis: AIAnalysisResult | null;
   isLoading: boolean;
   onGenerate: () => void;
 }

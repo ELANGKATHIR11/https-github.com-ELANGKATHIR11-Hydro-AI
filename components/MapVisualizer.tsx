@@ -16,10 +16,10 @@ L.Icon.Default.mergeOptions({
 interface MapVisualizerProps {
   reservoir: Reservoir;
   data: SeasonalData;
-  label?: string; // Optional label for comparison mode
+  label?: string; 
+  isSimulation?: boolean; // New prop to indicate data source
 }
 
-// Strict coordinate validator
 const isValidCoordinate = (coord: any): coord is [number, number] => {
   return Array.isArray(coord) && 
          coord.length === 2 && 
@@ -41,40 +41,35 @@ const MapUpdater: React.FC<{ center: [number, number] }> = ({ center }) => {
   return null;
 };
 
-const MapVisualizer: React.FC<MapVisualizerProps> = ({ reservoir, data, label }) => {
+const MapVisualizer: React.FC<MapVisualizerProps> = ({ reservoir, data, label, isSimulation = true }) => {
   
-  // Guard against undefined/bad reservoir data with a safe default (Chembarambakkam coordinates)
   const safeReservoirLocation = useMemo((): [number, number] => {
     if (reservoir && isValidCoordinate(reservoir.location)) {
         return reservoir.location;
     }
-    // Return a default valid coordinate if data is missing to prevent Leaflet crash
     return [13.0089, 80.0573]; 
   }, [reservoir]);
 
-  // Derived inlet location with strict validation
   const inletLocation = useMemo((): [number, number] | null => {
     if (!isValidCoordinate(safeReservoirLocation)) return null;
     const lat = safeReservoirLocation[0] + 0.015;
     const lng = safeReservoirLocation[1] - 0.015;
-    if (Number.isFinite(lat) && Number.isFinite(lng)) {
-        return [lat, lng];
-    }
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return [lat, lng];
     return null;
   }, [safeReservoirLocation]);
 
   const waterPolygon = useMemo(() => {
     if (!data || typeof data.volume !== 'number' || !reservoir || !reservoir.maxCapacity) return [];
-    
-    // Additional safety check for location
-    if (!isValidCoordinate(safeReservoirLocation)) {
-        return [];
-    }
+    if (!isValidCoordinate(safeReservoirLocation)) return [];
 
     let volPct = (data.volume / reservoir.maxCapacity) * 100;
     if (!Number.isFinite(volPct)) volPct = 0;
     
-    // Generate polygon and strictly filter invalid points
+    // If we have real surface area data, we could ideally shape the polygon differently.
+    // For now, we scale the mock polygon generation to match the backend area if provided, 
+    // or fallback to volume percentage.
+    // Note: generateWaterPolygon logic relies on volume percentage, so we keep that correlation for the visual.
+    
     const poly = generateWaterPolygon(safeReservoirLocation, volPct);
     return poly.filter(p => isValidCoordinate(p));
   }, [reservoir, data, safeReservoirLocation]);
@@ -87,34 +82,25 @@ const MapVisualizer: React.FC<MapVisualizerProps> = ({ reservoir, data, label })
 
   const mapOptions = useMemo(() => {
     let fillColor, strokeColor;
-    
-    // Gradient: Lighter blues for low capacity, Darker/Deep blues for high capacity
     if (volumePercentage >= 80) {
-      fillColor = '#1e40af'; // blue-800
-      strokeColor = '#172554'; // blue-950
+      fillColor = '#1e40af'; 
+      strokeColor = '#172554';
     } else if (volumePercentage >= 60) {
-      fillColor = '#2563eb'; // blue-600
-      strokeColor = '#1e3a8a'; // blue-900
+      fillColor = '#2563eb';
+      strokeColor = '#1e3a8a';
     } else if (volumePercentage >= 40) {
-      fillColor = '#3b82f6'; // blue-500
-      strokeColor = '#1d4ed8'; // blue-700
+      fillColor = '#3b82f6';
+      strokeColor = '#1d4ed8';
     } else if (volumePercentage >= 20) {
-      fillColor = '#60a5fa'; // blue-400
-      strokeColor = '#2563eb'; // blue-600
+      fillColor = '#60a5fa';
+      strokeColor = '#2563eb';
     } else {
-      fillColor = '#93c5fd'; // blue-300
-      strokeColor = '#3b82f6'; // blue-500
+      fillColor = '#93c5fd';
+      strokeColor = '#3b82f6';
     }
-
-    return {
-      fillColor,
-      fillOpacity: 0.65,
-      color: strokeColor,
-      weight: 2
-    };
+    return { fillColor, fillOpacity: 0.65, color: strokeColor, weight: 2 };
   }, [volumePercentage]);
 
-  // Ensure we don't render MapContainer until we have a guaranteed valid center
   if (!isValidCoordinate(safeReservoirLocation)) {
       return <div className="h-full w-full bg-slate-900 flex items-center justify-center text-slate-500">Invalid Coordinates</div>;
   }
@@ -131,20 +117,14 @@ const MapVisualizer: React.FC<MapVisualizerProps> = ({ reservoir, data, label })
         <LayersControl position="topright">
           <LayersControl.BaseLayer checked name="Dark Matter (Data)">
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              attribution='&copy; OpenStreetMap'
               url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             />
           </LayersControl.BaseLayer>
           <LayersControl.BaseLayer name="Satellite (Esri)">
             <TileLayer
-              attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+              attribution='Esri'
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            />
-          </LayersControl.BaseLayer>
-          <LayersControl.BaseLayer name="OpenStreetMap">
-             <TileLayer
-              attribution='&copy; OpenStreetMap contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
           </LayersControl.BaseLayer>
         </LayersControl>
@@ -156,12 +136,14 @@ const MapVisualizer: React.FC<MapVisualizerProps> = ({ reservoir, data, label })
              <Popup>
               <div className="text-slate-900 text-sm">
                 <strong className="text-base">{reservoir?.name || 'Reservoir'}</strong>
+                <div className="text-[10px] text-slate-500 mb-1">
+                   {isSimulation ? '(Simulated Physics)' : '(Sentinel-2 Analysis)'}
+                </div>
                 <hr className="my-1 border-slate-300"/>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                    <span>Water Area:</span> <span className="font-mono">{data?.surfaceArea} km²</span>
                    <span>Volume:</span> <span className="font-mono">{data?.volume} MCM</span>
                    <span>Capacity:</span> <span className="font-mono">{Math.round(volumePercentage)}%</span>
-                   <span>Level:</span> <span className="font-mono">{data?.waterLevel} m</span>
                 </div>
               </div>
             </Popup>
@@ -173,36 +155,24 @@ const MapVisualizer: React.FC<MapVisualizerProps> = ({ reservoir, data, label })
                 Depth Probe
              </Tooltip>
         </CircleMarker>
-
-        {inletLocation && (
-          <Marker position={inletLocation}>
-               <Popup>
-                 <div className="text-slate-900">
-                   <strong>Primary Inflow</strong><br/>
-                   Flow Rate: {(data?.rainfall ? (data.rainfall * 0.2).toFixed(1) : '0.0')} m³/s
-                 </div>
-               </Popup>
-          </Marker>
-        )}
-
       </MapContainer>
       
-      {/* Overlay Info */}
+      {/* Live Data Overlay */}
       <div className="absolute top-4 left-14 z-[400] bg-slate-900/90 backdrop-blur-md p-3 rounded-lg border border-slate-600 text-xs shadow-xl print:hidden">
          {label && (
              <div className="mb-2 pb-2 border-b border-slate-700">
                  <h4 className="font-bold text-white uppercase tracking-wider">{label}</h4>
              </div>
          )}
-         <h4 className="font-bold text-sky-400 flex items-center gap-2">
+         <h4 className={`font-bold flex items-center gap-2 ${isSimulation ? 'text-orange-400' : 'text-emerald-400'}`}>
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isSimulation ? 'bg-orange-400' : 'bg-emerald-400'}`}></span>
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${isSimulation ? 'bg-orange-500' : 'bg-emerald-500'}`}></span>
             </span>
-            Live Satellite Feed
+            {isSimulation ? 'Physics Engine (Sim)' : 'Sentinel-2 Live Feed'}
          </h4>
-         <p className="text-slate-300 mt-1">Source: Sentinel-2 (L2A)</p>
-         <p className="text-slate-300">Band Combination: NDWI</p>
+         {!isSimulation && <p className="text-slate-300 mt-1">Provider: Google Earth Engine</p>}
+         <p className="text-slate-400 mt-0.5">Processing: {isSimulation ? 'Local' : 'Backend U-Net'}</p>
       </div>
     </div>
   );
