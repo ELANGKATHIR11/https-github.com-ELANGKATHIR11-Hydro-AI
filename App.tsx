@@ -224,6 +224,7 @@ const App: React.FC = () => {
                       data={displayData} 
                       label={state.isComparisonMode ? `${state.season} ${state.year} (Primary)` : undefined}
                       isSimulation={satelliteData ? satelliteData.is_simulation : true}
+                      onReservoirSelect={(id) => handleStateChange({ selectedReservoirId: id })}
                    />
                 </div>
 
@@ -234,6 +235,7 @@ const App: React.FC = () => {
                       data={comparisonData} 
                       label={`${state.compareSeason} ${state.compareYear} (Comparison)`}
                       isSimulation={true} // Historical comparison usually implies simulation/archived data
+                      onReservoirSelect={(id) => handleStateChange({ selectedReservoirId: id })}
                     />
                     <button 
                        onClick={() => handleStateChange({ isComparisonMode: false })}

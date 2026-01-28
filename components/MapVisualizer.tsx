@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Polygon, CircleMarker, Popup, useMap, LayersControl, Marker, Tooltip } from 'react-leaflet';
 import { Reservoir, SeasonalData } from '../types';
-import { generateWaterPolygon } from '../services/mockData';
+import { generateWaterPolygon, RESERVOIRS } from '../services/mockData';
 import L from 'leaflet';
 
 // Fix for default Leaflet icons in React
@@ -18,6 +18,7 @@ interface MapVisualizerProps {
   data: SeasonalData;
   label?: string; 
   isSimulation?: boolean; // New prop to indicate data source
+  onReservoirSelect?: (id: string) => void;
 }
 
 const isValidCoordinate = (coord: any): coord is [number, number] => {
@@ -41,7 +42,7 @@ const MapUpdater: React.FC<{ center: [number, number] }> = ({ center }) => {
   return null;
 };
 
-const MapVisualizer: React.FC<MapVisualizerProps> = ({ reservoir, data, label, isSimulation = true }) => {
+const MapVisualizer: React.FC<MapVisualizerProps> = ({ reservoir, data, label, isSimulation = true, onReservoirSelect }) => {
   
   const safeReservoirLocation = useMemo((): [number, number] => {
     if (reservoir && isValidCoordinate(reservoir.location)) {
@@ -130,6 +131,39 @@ const MapVisualizer: React.FC<MapVisualizerProps> = ({ reservoir, data, label, i
         </LayersControl>
         
         <MapUpdater center={safeReservoirLocation} />
+
+        {/* Other Reservoirs Markers */}
+        {onReservoirSelect && RESERVOIRS.map(res => {
+            if (res.id === reservoir.id) return null; // Skip active one
+            if (!isValidCoordinate(res.location)) return null;
+
+            return (
+                <CircleMarker
+                    key={res.id}
+                    center={res.location}
+                    radius={6}
+                    pathOptions={{
+                        color: '#64748b',
+                        weight: 2,
+                        fillColor: '#cbd5e1',
+                        fillOpacity: 0.6
+                    }}
+                    eventHandlers={{
+                        click: () => onReservoirSelect(res.id),
+                        mouseover: (e) => e.target.setStyle({ color: '#38bdf8', fillColor: '#e0f2fe', fillOpacity: 1 }),
+                        mouseout: (e) => e.target.setStyle({ color: '#64748b', fillColor: '#cbd5e1', fillOpacity: 0.6 })
+                    }}
+                >
+                    <Tooltip direction="top" offset={[0, -10]} opacity={1}>
+                        <div className="text-center">
+                            <span className="font-bold text-slate-900">{res.name}</span>
+                            <br/>
+                            <span className="text-[10px] text-slate-500">Click to Select</span>
+                        </div>
+                    </Tooltip>
+                </CircleMarker>
+            );
+        })}
 
         {waterPolygon.length > 0 && (
           <Polygon positions={waterPolygon as any} pathOptions={mapOptions}>
