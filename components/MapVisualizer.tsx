@@ -19,18 +19,23 @@ interface MapVisualizerProps {
   label?: string; // Optional label for comparison mode
 }
 
+// Strict coordinate validator
 const isValidCoordinate = (coord: any): coord is [number, number] => {
   return Array.isArray(coord) && 
          coord.length === 2 && 
-         Number.isFinite(coord[0]) && 
-         Number.isFinite(coord[1]);
+         typeof coord[0] === 'number' && Number.isFinite(coord[0]) && 
+         typeof coord[1] === 'number' && Number.isFinite(coord[1]);
 };
 
 const MapUpdater: React.FC<{ center: [number, number] }> = ({ center }) => {
   const map = useMap();
   useEffect(() => {
     if (isValidCoordinate(center)) {
-       map.flyTo(center, 12, { duration: 2 });
+       try {
+         map.flyTo(center, 12, { duration: 2 });
+       } catch (e) {
+         console.warn("Leaflet flyTo failed:", e);
+       }
     }
   }, [center, map]);
   return null;
@@ -38,12 +43,13 @@ const MapUpdater: React.FC<{ center: [number, number] }> = ({ center }) => {
 
 const MapVisualizer: React.FC<MapVisualizerProps> = ({ reservoir, data, label }) => {
   
-  // Guard against undefined/bad reservoir data
+  // Guard against undefined/bad reservoir data with a safe default (Chembarambakkam coordinates)
   const safeReservoirLocation = useMemo((): [number, number] => {
     if (reservoir && isValidCoordinate(reservoir.location)) {
         return reservoir.location;
     }
-    return [13.0, 80.0]; // Default fallback
+    // Return a default valid coordinate if data is missing to prevent Leaflet crash
+    return [13.0089, 80.0573]; 
   }, [reservoir]);
 
   // Derived inlet location with strict validation
@@ -68,15 +74,15 @@ const MapVisualizer: React.FC<MapVisualizerProps> = ({ reservoir, data, label })
     let volPct = (data.volume / reservoir.maxCapacity) * 100;
     if (!Number.isFinite(volPct)) volPct = 0;
     
+    // Generate polygon and strictly filter invalid points
     const poly = generateWaterPolygon(safeReservoirLocation, volPct);
-    
-    // Filter out any potential invalid points
     return poly.filter(p => isValidCoordinate(p));
   }, [reservoir, data, safeReservoirLocation]);
 
   const volumePercentage = useMemo(() => {
     if (!data?.volume || !reservoir?.maxCapacity) return 0;
-    return (data.volume / reservoir.maxCapacity) * 100;
+    const pct = (data.volume / reservoir.maxCapacity) * 100;
+    return Number.isFinite(pct) ? pct : 0;
   }, [data, reservoir]);
 
   const mapOptions = useMemo(() => {
@@ -84,7 +90,7 @@ const MapVisualizer: React.FC<MapVisualizerProps> = ({ reservoir, data, label })
     
     // Gradient: Lighter blues for low capacity, Darker/Deep blues for high capacity
     if (volumePercentage >= 80) {
-      fillColor = '#1e40af'; // blue-800 (High Depth/Volume)
+      fillColor = '#1e40af'; // blue-800
       strokeColor = '#172554'; // blue-950
     } else if (volumePercentage >= 60) {
       fillColor = '#2563eb'; // blue-600
@@ -96,7 +102,7 @@ const MapVisualizer: React.FC<MapVisualizerProps> = ({ reservoir, data, label })
       fillColor = '#60a5fa'; // blue-400
       strokeColor = '#2563eb'; // blue-600
     } else {
-      fillColor = '#93c5fd'; // blue-300 (Shallow)
+      fillColor = '#93c5fd'; // blue-300
       strokeColor = '#3b82f6'; // blue-500
     }
 
@@ -108,8 +114,13 @@ const MapVisualizer: React.FC<MapVisualizerProps> = ({ reservoir, data, label })
     };
   }, [volumePercentage]);
 
+  // Ensure we don't render MapContainer until we have a guaranteed valid center
+  if (!isValidCoordinate(safeReservoirLocation)) {
+      return <div className="h-full w-full bg-slate-900 flex items-center justify-center text-slate-500">Invalid Coordinates</div>;
+  }
+
   return (
-    <div className="h-full w-full rounded-xl overflow-hidden border border-slate-700 shadow-2xl relative">
+    <div className="h-full w-full rounded-xl overflow-hidden border border-slate-700 shadow-2xl relative bg-slate-900">
       <MapContainer 
         key={`${reservoir?.id}-${data?.year}-${data?.season}`} 
         center={safeReservoirLocation} 
@@ -157,15 +168,13 @@ const MapVisualizer: React.FC<MapVisualizerProps> = ({ reservoir, data, label })
           </Polygon>
         )}
 
-        {isValidCoordinate(safeReservoirLocation) && (
-          <CircleMarker center={safeReservoirLocation} radius={4} pathOptions={{color: 'white', opacity: 0.8, fillColor: 'white', fillOpacity: 1}}>
+        <CircleMarker center={safeReservoirLocation} radius={4} pathOptions={{color: 'white', opacity: 0.8, fillColor: 'white', fillOpacity: 1}}>
              <Tooltip direction="top" offset={[0, -5]} opacity={1} permanent>
                 Depth Probe
              </Tooltip>
-          </CircleMarker>
-        )}
+        </CircleMarker>
 
-        {inletLocation && isValidCoordinate(inletLocation) && (
+        {inletLocation && (
           <Marker position={inletLocation}>
                <Popup>
                  <div className="text-slate-900">
@@ -194,16 +203,6 @@ const MapVisualizer: React.FC<MapVisualizerProps> = ({ reservoir, data, label })
          </h4>
          <p className="text-slate-300 mt-1">Source: Sentinel-2 (L2A)</p>
          <p className="text-slate-300">Band Combination: NDWI</p>
-         <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-700">
-            <div className="flex flex-col gap-1 w-full">
-                <span className="text-[10px] text-slate-400">Water Intensity Index</span>
-                <div className="h-1.5 w-full bg-gradient-to-r from-blue-300 via-blue-500 to-blue-900 rounded-full"></div>
-                <div className="flex justify-between text-[8px] text-slate-500">
-                   <span>Low</span>
-                   <span>High</span>
-                </div>
-            </div>
-         </div>
       </div>
     </div>
   );

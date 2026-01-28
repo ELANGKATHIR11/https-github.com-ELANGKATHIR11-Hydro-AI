@@ -28,29 +28,36 @@ const VolumeChart: React.FC<VolumeChartProps> = ({ data }) => {
   }));
 
   return (
-    <div className="w-full h-64 bg-slate-900/50 rounded-xl p-4 border border-slate-800 chart-print-container">
-      <h3 className="text-sm font-semibold text-slate-400 mb-4">Historical Storage & Rainfall Trends</h3>
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-          <defs>
-            <linearGradient id="colorVol" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#38bdf8" stopOpacity={0}/>
-            </linearGradient>
-            <linearGradient id="colorRain" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#818cf8" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-          <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickMargin={10} />
-          <YAxis stroke="#94a3b8" fontSize={10} />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend wrapperStyle={{fontSize: '12px', paddingTop: '10px'}}/>
-          <Area type="monotone" dataKey="Volume" stroke="#38bdf8" fillOpacity={1} fill="url(#colorVol)" strokeWidth={2} />
-          <Area type="monotone" dataKey="Rainfall" stroke="#818cf8" fillOpacity={1} fill="url(#colorRain)" strokeWidth={2} />
-        </AreaChart>
-      </ResponsiveContainer>
+    <div className="w-full h-64 bg-slate-900/50 rounded-xl p-4 border border-slate-800 chart-print-container flex flex-col">
+      <h3 className="text-sm font-semibold text-slate-400 mb-4 shrink-0">Historical Storage & Rainfall Trends</h3>
+      
+      {/* 
+        Using flex-1 and min-h-0 creates a bounded context for ResponsiveContainer. 
+        This prevents the 'width <= 0' warning by ensuring the parent has a calculated height.
+      */}
+      <div className="flex-1 w-full min-h-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorVol" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#38bdf8" stopOpacity={0}/>
+              </linearGradient>
+              <linearGradient id="colorRain" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#818cf8" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+            <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickMargin={10} />
+            <YAxis stroke="#94a3b8" fontSize={10} />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend wrapperStyle={{fontSize: '12px', paddingTop: '10px'}}/>
+            <Area type="monotone" dataKey="Volume" stroke="#38bdf8" fillOpacity={1} fill="url(#colorVol)" strokeWidth={2} />
+            <Area type="monotone" dataKey="Rainfall" stroke="#818cf8" fillOpacity={1} fill="url(#colorRain)" strokeWidth={2} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 };

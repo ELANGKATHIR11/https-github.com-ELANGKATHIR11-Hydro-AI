@@ -8,6 +8,7 @@ import AIInsights from './components/AIInsights';
 import DashboardControls from './components/DashboardControls';
 import ModelFeedback from './components/ModelFeedback';
 import MLControlPanel from './components/MLControlPanel';
+import Logo from './components/Logo';
 import { Waves, BarChart3, Info, Download, Mountain, Timer, Loader2, Server } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -92,12 +93,12 @@ const App: React.FC = () => {
       <header className="bg-slate-900/50 backdrop-blur-lg border-b border-slate-800 sticky top-0 z-50 print-hidden">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Waves className="text-white w-6 h-6" />
-            </div>
+            <Logo className="w-10 h-10" />
             <div>
-              <h1 className="text-lg font-bold text-slate-100 tracking-tight">HydroAI</h1>
-              <p className="text-xs text-slate-400">Tamil Nadu Reservoir Monitor</p>
+              <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-indigo-400">
+                HydroAI
+              </h1>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Tamil Nadu Reservoir Monitor</p>
             </div>
           </div>
           <div className="flex items-center gap-4">

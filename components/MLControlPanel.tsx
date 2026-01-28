@@ -78,22 +78,24 @@ const MLControlPanel: React.FC = () => {
        </div>
 
        {/* Training Chart */}
-       <div className="h-32 w-full bg-slate-950/30 rounded-lg border border-slate-800/50 p-2">
-          <ResponsiveContainer width="100%" height="100%">
-             <LineChart data={metrics}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                <XAxis dataKey="epoch" hide />
-                <YAxis domain={[0, 1]} hide />
-                <Tooltip 
-                    contentStyle={{backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '12px'}}
-                    itemStyle={{color: '#fff'}}
-                    labelStyle={{display: 'none'}}
-                />
-                <Line type="monotone" dataKey="iou" stroke="#34d399" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="loss" stroke="#f472b6" strokeWidth={2} dot={false} />
-             </LineChart>
-          </ResponsiveContainer>
-          <div className="flex justify-between px-2 mt-1">
+       <div className="h-32 w-full bg-slate-950/30 rounded-lg border border-slate-800/50 p-2 relative">
+          <div className="absolute inset-2">
+             <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={metrics}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                    <XAxis dataKey="epoch" hide />
+                    <YAxis domain={[0, 1]} hide />
+                    <Tooltip 
+                        contentStyle={{backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '12px'}}
+                        itemStyle={{color: '#fff'}}
+                        labelStyle={{display: 'none'}}
+                    />
+                    <Line type="monotone" dataKey="iou" stroke="#34d399" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="loss" stroke="#f472b6" strokeWidth={2} dot={false} />
+                </LineChart>
+             </ResponsiveContainer>
+          </div>
+          <div className="absolute bottom-1 left-2 right-2 flex justify-between">
              <span className="text-[9px] text-emerald-500 flex items-center gap-1"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div> Accuracy</span>
              <span className="text-[9px] text-pink-500 flex items-center gap-1"><div className="w-1.5 h-1.5 bg-pink-500 rounded-full"></div> Loss</span>
           </div>
