@@ -43,13 +43,13 @@ const VolumeChart: React.FC<VolumeChartProps> = ({ data, forecast }) => {
   }
 
   return (
-    <div className="w-full h-64 bg-slate-900/50 rounded-xl p-4 border border-slate-800 chart-print-container flex flex-col">
-      <div className="flex justify-between items-center mb-4 shrink-0">
-          <h3 className="text-sm font-semibold text-slate-400">Historical Storage & LSTM Forecast</h3>
+    <div className="w-full h-64 bg-slate-900/50 rounded-xl p-4 border border-slate-800 chart-print-container flex flex-col print:bg-white print:border-slate-200 print:h-80 print:mb-4">
+      <div className="flex justify-between items-center mb-4 shrink-0 print:mb-2">
+          <h3 className="text-sm font-semibold text-slate-400 print:text-slate-700">Historical Storage & LSTM Forecast</h3>
           {forecast && (
               <div className="flex items-center gap-2 text-[10px]">
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-sky-400"></span> Observed</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 border border-emerald-200 border-dashed"></span> Prediction</span>
+                  <span className="flex items-center gap-1 print:text-slate-700"><span className="w-2 h-2 rounded-full bg-sky-400 print:bg-sky-600"></span> Observed</span>
+                  <span className="flex items-center gap-1 print:text-slate-700"><span className="w-2 h-2 rounded-full bg-emerald-400 border border-emerald-200 border-dashed print:bg-emerald-600"></span> Prediction</span>
               </div>
           )}
       </div>

@@ -128,6 +128,12 @@ const MapVisualizer: React.FC<MapVisualizerProps> = ({ reservoir, data, label, i
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             />
           </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer name="OpenStreetMap (Standard)">
+             <TileLayer
+                attribution='&copy; OpenStreetMap contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+             />
+          </LayersControl.BaseLayer>
         </LayersControl>
         
         <MapUpdater center={safeReservoirLocation} />

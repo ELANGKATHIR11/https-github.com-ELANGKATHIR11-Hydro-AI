@@ -133,19 +133,15 @@ const App: React.FC = () => {
   };
 
   const handleDownloadReport = async () => {
-    if (aiAnalysis) {
-      window.print();
-      return;
+    // If AI analysis isn't generated yet, try to generate it before printing
+    if (!aiAnalysis) {
+        if(window.confirm("AI Report not yet generated. Generate it now for a complete PDF?")) {
+             await handleGenerateAI();
+             setTimeout(() => window.print(), 800); // Small delay to allow render
+             return;
+        }
     }
-    const result = await handleGenerateAI();
-    if (result) {
-      setTimeout(() => {
-        window.print();
-      }, 500);
-    } else {
-        alert("Report generation failed.");
-        window.print();
-    }
+    window.print();
   };
 
   return (
@@ -181,25 +177,43 @@ const App: React.FC = () => {
                 ) : (
                     <Download size={14} />
                 )}
-                {isGeneratingReport ? "Generating..." : "Download Report"}
+                {isGeneratingReport ? "Generating..." : "Download Analysis Report"}
              </button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-7xl mx-auto px-4 py-6 space-y-6 print:space-y-4 print:py-0">
         
-        {/* Print Header */}
-        <div className="hidden print:block mb-8 border-b border-gray-300 pb-4">
-            <div className="flex justify-between items-end">
+        {/* Print Header - Visible only in PDF */}
+        <div className="hidden print:block mb-6 border-b-2 border-slate-800 pb-4">
+            <div className="flex justify-between items-start">
                 <div>
-                    <h1 className="text-3xl font-bold text-black mb-1">Hydrological Analysis Report</h1>
-                    <p className="text-sm text-gray-600">Generated via HydroAI Geospatial System</p>
+                    <h1 className="text-4xl font-bold text-slate-900 mb-2">Reservoir Analysis Report</h1>
+                    <p className="text-sm text-slate-600">Generated via HydroAI Geospatial Intelligence System</p>
                 </div>
-                <div className="text-right text-sm text-gray-500">
-                    <p>Date: {new Date().toLocaleDateString()}</p>
-                    <p>Ref ID: {selectedReservoir.id.toUpperCase()}-{state.year}-{state.season}</p>
+                <div className="text-right">
+                     <Logo className="w-16 h-16 mb-2 ml-auto opacity-80" />
+                     <div className="text-sm text-slate-500 font-mono">
+                        <p>Date: {new Date().toLocaleDateString()}</p>
+                        <p>Ref: {selectedReservoir.id.split('-')[1].toUpperCase()}-{state.year}</p>
+                     </div>
+                </div>
+            </div>
+            
+            <div className="mt-6 grid grid-cols-3 gap-4 text-sm bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <div>
+                    <span className="block text-xs text-slate-500 uppercase">Reservoir Name</span>
+                    <span className="font-bold text-lg text-slate-800">{selectedReservoir.name}</span>
+                </div>
+                <div>
+                    <span className="block text-xs text-slate-500 uppercase">Analysis Period</span>
+                    <span className="font-bold text-lg text-slate-800">{state.season} {state.year}</span>
+                </div>
+                <div>
+                    <span className="block text-xs text-slate-500 uppercase">Current Capacity</span>
+                    <span className="font-bold text-lg text-slate-800">{Math.round((displayData.volume/selectedReservoir.maxCapacity)*100)}% Full</span>
                 </div>
             </div>
         </div>
@@ -213,10 +227,12 @@ const App: React.FC = () => {
             />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:h-[calc(100vh-14rem)] lg:min-h-[600px] h-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:h-[calc(100vh-14rem)] lg:min-h-[600px] h-auto print:block print:h-auto">
           
-          <div className="lg:col-span-8 flex flex-col gap-6 h-full">
-            <div className={`flex-1 bg-slate-900 rounded-xl relative group min-h-[300px] map-print-container grid gap-4 transition-all duration-500 ${state.isComparisonMode ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          <div className="lg:col-span-8 flex flex-col gap-6 h-full print:w-full print:gap-4">
+            
+            {/* Map Visualizer Container */}
+            <div className={`flex-1 bg-slate-900 rounded-xl relative group min-h-[300px] map-print-container grid gap-4 transition-all duration-500 ${state.isComparisonMode ? 'grid-cols-2' : 'grid-cols-1'} print:min-h-[400px] print:mb-4`}>
                 
                 <div className="relative h-full w-full">
                    <MapVisualizer 
@@ -229,17 +245,17 @@ const App: React.FC = () => {
                 </div>
 
                 {state.isComparisonMode && (
-                  <div className="relative h-full w-full border-l-2 border-slate-700/50">
+                  <div className="relative h-full w-full border-l-2 border-slate-700/50 print:border-slate-300">
                     <MapVisualizer 
                       reservoir={selectedReservoir} 
                       data={comparisonData} 
                       label={`${state.compareSeason} ${state.compareYear} (Comparison)`}
-                      isSimulation={true} // Historical comparison usually implies simulation/archived data
+                      isSimulation={true} 
                       onReservoirSelect={(id) => handleStateChange({ selectedReservoirId: id })}
                     />
                     <button 
                        onClick={() => handleStateChange({ isComparisonMode: false })}
-                       className="absolute top-2 right-2 z-[500] bg-slate-800 text-slate-300 p-1 rounded-full hover:bg-slate-700 shadow-lg"
+                       className="absolute top-2 right-2 z-[500] bg-slate-800 text-slate-300 p-1 rounded-full hover:bg-slate-700 shadow-lg print-hidden"
                     >
                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
@@ -247,7 +263,8 @@ const App: React.FC = () => {
                 )}
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print:grid-cols-2">
+            {/* Statistics Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print:grid-cols-4 print:gap-4 print:mb-6">
                <StatCard label="Water Level" value={`${displayData.waterLevel} m`} sub={`FRL: ${selectedReservoir.fullLevel} m`} trend={displayData.waterLevel > (selectedReservoir.fullLevel * 0.8) ? 'up' : 'down'}/>
                <StatCard 
                   label="Surface Area" 
@@ -265,7 +282,7 @@ const App: React.FC = () => {
                <StatCard label="Rainfall" value={`${displayData.rainfall} mm`} sub={`${state.season} avg`} icon={<BarChart3 size={14} className="text-blue-400"/>}/>
             </div>
 
-            <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl stat-card">
+            <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl stat-card print:hidden">
                  <h3 className="text-sm font-semibold text-slate-100 mb-3 flex items-center gap-2">
                     <Info size={16} className="text-indigo-400"/>
                     Reservoir Profile: {selectedReservoir.name}
@@ -288,15 +305,26 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <div className="lg:col-span-4 flex flex-col gap-6 lg:h-full lg:overflow-y-auto pr-1">
-            <MLControlPanel />
-            <AIInsights 
-                analysis={aiAnalysis ? {...aiAnalysis, isAnomaly: mlAnomaly} : null} // Force inject anomaly state 
-                isLoading={isGeneratingReport} 
-                onGenerate={handleGenerateAI}
-            />
-            {aiAnalysis && (<ModelFeedback analysis={aiAnalysis} data={displayData} onFeedbackSubmit={(f) => console.log(f)}/>)}
-            <VolumeChart data={historicalData} forecast={mlForecast} />
+          <div className="lg:col-span-4 flex flex-col gap-6 lg:h-full lg:overflow-y-auto pr-1 print:w-full print:overflow-visible print:block print:gap-4">
+            <div className="print-hidden">
+                <MLControlPanel />
+            </div>
+            
+            <div className="print:mb-4">
+                <AIInsights 
+                    analysis={aiAnalysis ? {...aiAnalysis, isAnomaly: mlAnomaly} : null} 
+                    isLoading={isGeneratingReport} 
+                    onGenerate={handleGenerateAI}
+                />
+            </div>
+
+            <div className="print-hidden">
+                {aiAnalysis && (<ModelFeedback analysis={aiAnalysis} data={displayData} onFeedbackSubmit={(f) => console.log(f)}/>)}
+            </div>
+            
+            <div className="print:break-inside-avoid print:mt-4">
+                <VolumeChart data={historicalData} forecast={mlForecast} />
+            </div>
             
             <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl print-hidden">
                <div className="flex items-center gap-2 mb-2 text-slate-100 font-medium">
@@ -314,6 +342,11 @@ const App: React.FC = () => {
                    <div>Anomaly: {mlAnomaly ? 'Isolation Forest' : 'Statistical'}</div>
                </div>
             </div>
+            
+             {/* Print footer */}
+             <div className="hidden print:block mt-8 pt-4 border-t border-slate-300 text-center text-xs text-slate-400">
+                <p>Generated by HydroAI • {window.location.href} • Page 1 of 1</p>
+            </div>
           </div>
         </div>
       </main>
@@ -322,16 +355,18 @@ const App: React.FC = () => {
 };
 
 const StatCard: React.FC<{label: string, value: string, sub: string, trend?: 'up'|'down'|'neutral', icon?: React.ReactNode, alert?: boolean}> = ({label, value, sub, trend, icon, alert}) => (
-  <div className={`bg-slate-900/80 border p-4 rounded-xl hover:border-slate-700 transition-colors stat-card relative overflow-hidden ${alert ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'border-slate-800'}`}>
-    {alert && <div className="absolute top-0 right-0 p-1 bg-red-500 text-white text-[9px] font-bold rounded-bl">ANOMALY</div>}
+  <div className={`bg-slate-900/80 border p-4 rounded-xl hover:border-slate-700 transition-colors stat-card relative overflow-hidden ${alert ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'border-slate-800'} print:bg-white print:border-slate-300 print:shadow-none`}>
+    {alert && <div className="absolute top-0 right-0 p-1 bg-red-500 text-white text-[9px] font-bold rounded-bl print:hidden">ANOMALY</div>}
+    {alert && <div className="hidden print:block absolute top-0 right-0 p-1 text-red-600 text-[9px] font-bold border border-red-600 rounded m-1">ANOMALY</div>}
+    
     <div className="flex justify-between items-start mb-2">
-      <span className="text-slate-500 text-xs font-semibold uppercase tracking-wider">{label}</span>
-      {icon}
+      <span className="text-slate-500 text-xs font-semibold uppercase tracking-wider print:text-slate-600">{label}</span>
+      <span className="print:text-slate-800">{icon}</span>
     </div>
-    <div className={`text-2xl font-bold mb-1 ${alert ? 'text-red-400' : 'text-slate-100'}`}>{value}</div>
+    <div className={`text-2xl font-bold mb-1 ${alert ? 'text-red-400 print:text-red-700' : 'text-slate-100 print:text-slate-900'}`}>{value}</div>
     <div className="flex items-center gap-2">
-       {trend && (<span className={`text-xs px-1.5 py-0.5 rounded ${trend === 'up' ? 'bg-green-500/20 text-green-400' : trend === 'down' ? 'bg-red-500/20 text-red-400' : 'bg-slate-700 text-slate-400'}`}>{trend === 'up' ? '↑' : trend === 'down' ? '↓' : '-'}</span>)}
-       <span className="text-xs text-slate-400 truncate">{sub}</span>
+       {trend && (<span className={`text-xs px-1.5 py-0.5 rounded print:border print:border-slate-200 ${trend === 'up' ? 'bg-green-500/20 text-green-400 print:text-green-700 print:bg-green-50' : trend === 'down' ? 'bg-red-500/20 text-red-400 print:text-red-700 print:bg-red-50' : 'bg-slate-700 text-slate-400 print:text-slate-600 print:bg-slate-100'}`}>{trend === 'up' ? '↑' : trend === 'down' ? '↓' : '-'}</span>)}
+       <span className="text-xs text-slate-400 truncate print:text-slate-600">{sub}</span>
     </div>
   </div>
 );

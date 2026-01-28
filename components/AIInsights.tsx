@@ -38,10 +38,10 @@ const AIInsights: React.FC<AIInsightsProps> = ({ analysis, isLoading, onGenerate
   };
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 h-full flex flex-col stat-card print:border-none print:p-0 print:shadow-none">
-      <div className="flex items-center justify-between mb-4 print:hidden">
-        <h3 className="text-lg font-semibold flex items-center gap-2 text-slate-100">
-          <Bot className="text-purple-400" />
+    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 h-full flex flex-col stat-card print:border-slate-200 print:bg-white print:p-4 print:shadow-none">
+      <div className="flex items-center justify-between mb-4 print:mb-2">
+        <h3 className="text-lg font-semibold flex items-center gap-2 text-slate-100 print:text-slate-900">
+          <Bot className="text-purple-400 print:text-purple-700" />
           AI Hydrologist
         </h3>
         <button
@@ -53,11 +53,6 @@ const AIInsights: React.FC<AIInsightsProps> = ({ analysis, isLoading, onGenerate
         </button>
       </div>
       
-      {/* Print-only section title */}
-      <div className="hidden print:block mb-4 border-b border-gray-300 pb-2">
-         <h3 className="text-xl font-bold text-gray-800">AI Risk Assessment & Forecast</h3>
-      </div>
-
       {!analysis && !isLoading && (
         <div className="flex-1 flex flex-col items-center justify-center text-slate-500 text-sm text-center print-hidden">
           <Bot className="w-12 h-12 mb-3 opacity-20" />
@@ -66,8 +61,8 @@ const AIInsights: React.FC<AIInsightsProps> = ({ analysis, isLoading, onGenerate
       )}
       
       {!analysis && (
-          <div className="hidden print:block text-center text-gray-500 italic p-4">
-              Analysis was not generated at the time of this report.
+          <div className="hidden print:block text-center text-gray-500 italic p-4 border border-dashed border-gray-300 rounded">
+              Analysis was not generated at the time of this report export.
           </div>
       )}
 
@@ -85,21 +80,21 @@ const AIInsights: React.FC<AIInsightsProps> = ({ analysis, isLoading, onGenerate
           <div className={`p-4 rounded-lg border flex items-start gap-3 ${getRiskColor(analysis.riskLevel)} print-exact`}>
             {getRiskIcon(analysis.riskLevel)}
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider opacity-70">Operational Risk</span>
+              <span className="text-xs font-bold uppercase tracking-wider opacity-70 print:opacity-100 print:text-gray-800">Operational Risk</span>
               <p className="font-bold text-lg">{analysis.riskLevel} Level</p>
             </div>
           </div>
           
           {analysis.isAnomaly && (
-             <div className="bg-red-500/10 border border-red-500/50 p-3 rounded-lg flex items-center gap-2 text-red-300 text-xs">
-                 <Zap size={14} className="text-red-400" />
+             <div className="bg-red-500/10 border border-red-500/50 p-3 rounded-lg flex items-center gap-2 text-red-300 text-xs print:bg-red-50 print:border-red-200 print:text-red-800">
+                 <Zap size={14} className="text-red-400 print:text-red-700" />
                  <b>Anomaly Detected:</b> Isolation Forest detected unusual volume drop.
              </div>
           )}
 
           {/* Predictive Analytics Section - Enhanced for Print */}
-          <div className="bg-slate-950/50 rounded-lg p-3 border border-slate-800 space-y-3 print:bg-white print:border-gray-200 print:p-4 print:shadow-sm print:break-inside-avoid">
-             <h4 className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2 print:text-gray-700 print:text-sm print:mb-3">
+          <div className="bg-slate-950/50 rounded-lg p-3 border border-slate-800 space-y-3 print:bg-slate-50 print:border-slate-200 print:p-4 print:shadow-sm print:break-inside-avoid">
+             <h4 className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2 print:text-slate-700 print:text-sm print:mb-3">
                 <TrendingUp size={14} className="text-cyan-400 print:text-blue-600" />
                 Predictive Analytics (3-Month Outlook)
              </h4>
@@ -107,10 +102,10 @@ const AIInsights: React.FC<AIInsightsProps> = ({ analysis, isLoading, onGenerate
              {/* Flood Probability */}
              <div className="print:mb-3">
                 <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-300 flex items-center gap-1 print:text-gray-700 font-medium">
-                        <Droplets size={12} className="text-blue-400"/> Flood Probability
+                    <span className="text-slate-300 flex items-center gap-1 print:text-slate-700 font-medium">
+                        <Droplets size={12} className="text-blue-400 print:text-blue-600"/> Flood Probability
                     </span>
-                    <span className={`font-mono font-bold ${analysis.floodProbability > 50 ? 'text-red-400' : 'text-cyan-300'} print:text-black`}>
+                    <span className={`font-mono font-bold ${analysis.floodProbability > 50 ? 'text-red-400 print:text-red-700' : 'text-cyan-300 print:text-cyan-700'}`}>
                         {analysis.floodProbability}%
                     </span>
                 </div>
@@ -124,8 +119,8 @@ const AIInsights: React.FC<AIInsightsProps> = ({ analysis, isLoading, onGenerate
 
              {/* Drought Severity */}
              <div className="flex items-center justify-between print:mb-3">
-                 <span className="text-xs text-slate-300 flex items-center gap-1 print:text-gray-700 font-medium">
-                    <Sun size={12} className="text-orange-400"/> Drought Severity Model
+                 <span className="text-xs text-slate-300 flex items-center gap-1 print:text-slate-700 font-medium">
+                    <Sun size={12} className="text-orange-400 print:text-orange-600"/> Drought Severity Model
                  </span>
                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${getDroughtColor(analysis.droughtSeverity)} print-exact`}>
                     {analysis.droughtSeverity}
@@ -133,22 +128,22 @@ const AIInsights: React.FC<AIInsightsProps> = ({ analysis, isLoading, onGenerate
              </div>
              
              {/* Forecast Text */}
-             <div className="pt-2 border-t border-slate-800 print:border-gray-200">
+             <div className="pt-2 border-t border-slate-800 print:border-slate-300">
                  <div className="flex items-center gap-1 mb-1">
-                    <Activity size={10} className="text-slate-500"/>
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wide">Hydrological Outlook</span>
+                    <Activity size={10} className="text-slate-500 print:text-slate-600"/>
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wide print:text-slate-600">Hydrological Outlook</span>
                  </div>
-                 <p className="text-xs text-slate-400 italic leading-snug print:text-gray-600 print:not-italic print:leading-normal">"{analysis.forecast}"</p>
+                 <p className="text-xs text-slate-400 italic leading-snug print:text-slate-700 print:not-italic print:leading-normal">"{analysis.forecast}"</p>
              </div>
           </div>
           
           <div className="space-y-1 print:mt-4">
-            <h4 className="text-xs font-bold text-slate-400 uppercase print:text-gray-700">Executive Summary</h4>
-            <p className="text-sm text-slate-300 leading-relaxed print:text-gray-800 text-justify">{analysis.summary}</p>
+            <h4 className="text-xs font-bold text-slate-400 uppercase print:text-slate-700">Executive Summary</h4>
+            <p className="text-sm text-slate-300 leading-relaxed print:text-slate-800 text-justify">{analysis.summary}</p>
           </div>
 
-          <div className="space-y-1 pt-2 border-t border-slate-700/50 print:border-gray-300 print:mt-4">
-             <h4 className="text-xs font-bold text-slate-400 uppercase print:text-gray-700">Operational Recommendation</h4>
+          <div className="space-y-1 pt-2 border-t border-slate-700/50 print:border-slate-300 print:mt-4">
+             <h4 className="text-xs font-bold text-slate-400 uppercase print:text-slate-700">Operational Recommendation</h4>
              <p className="text-sm font-medium text-sky-300 print:text-blue-800">{analysis.recommendation}</p>
           </div>
         </div>

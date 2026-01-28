@@ -54,7 +54,7 @@ export const RESERVOIRS: Reservoir[] = [
   {
     id: 'res-kaveripakkam',
     name: 'Kaveripakkam Lake',
-    location: [12.8966, 79.4623],
+    location: [12.8875, 79.4680],
     maxCapacity: 42, // ~1474 mcft
     fullLevel: 12.8,
     catchmentArea: 120,
